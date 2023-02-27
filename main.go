@@ -1,39 +1,36 @@
 package main
 
 import (
-	"net/http"
+	"database/sql"
+	"database/sql/driver"
+	"log"
 
 	"github.com/labstack/echo"
+
+	"github.com/elin/application-server/user"
+
+	mysql "github.com/go-sql-driver/mysql"
 )
-
-func handler(c echo.Context) error {
-	return c.String(http.StatusOK, "OK")
-}
-
-type UserController struct{ engine *echo.Group }
-
-func NewUserController(engine *echo.Group) *UserController {
-	controller := &UserController{engine}
-	engine.GET("/user/:id", controller.getUser)
-	engine.POST("/user/:id", controller.getUser)
-	engine.PUT("/user/:id", controller.getUser)
-	engine.DELETE("/user/:id", controller.getUser)
-
-	return controller
-}
-
-func (rc *UserController) getUser(c echo.Context) error {
-	return nil
-}
 
 func main() {
 	e := echo.New()
 
-	userGroup := e.Group("/admin")
-	userGroup.GET("/", handler)
-	userGroup.POST("/", handler)
-	userGroup.PUT("/", handler)
-	userGroup.DELETE("/", handler)
+	conn := getDBConn()
+	db := sql.OpenDB(conn)
+	defer db.Close()
+
+	ug := e.Group("/users")
+	ur := user.NewUserRepository(db)
+	_ = user.NewUserController(ug, ur)
 
 	e.Logger.Fatal(e.Start(":8888"))
+}
+
+func getDBConn() driver.Connector {
+	mysqlConn, err := mysql.NewConnector(&mysql.Config{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return mysqlConn
 }
